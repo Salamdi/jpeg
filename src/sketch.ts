@@ -9,8 +9,11 @@ function s(sketch: p5) {
   let crs: number[];
   let w: number;
   let h: number;
+  let cw: number;
+  let ch: number;
   let bpp: number;
   let imageSize: number;
+  let pxOffset: number;
   let f = 1;
   let d = 1;
   let zoom = 1;
@@ -50,26 +53,41 @@ function s(sketch: p5) {
   sketch.setup = () => {
     w = getHeaderValue(18, 4);
     h = getHeaderValue(22, 4);
+    cw = Math.ceil(w / 2);
+    ch = Math.ceil(h / 2);
     bpp = getHeaderValue(28, 2) / 8;
     imageSize = getHeaderValue(34, 4);
-    const pxOffset = getHeaderValue(10, 4);
+    pxOffset = getHeaderValue(10, 4);
     const pad = imageSize % 3;
     const wholeSize = imageSize - pad;
     const len = (wholeSize - pxOffset) / 3;
+    const slen = Math.ceil(w / 2) * Math.ceil(h / 2);
     ys = new Array(len).fill(0);
-    cbs = new Array(len).fill(0);
-    crs = new Array(len).fill(0);
+    cbs = new Array(slen).fill(0);
+    crs = new Array(slen).fill(0);
     for (let i = 0; i < wholeSize; i += 3) {
       const j = i + pxOffset;
       const b = data.bytes[j];
       const g = data.bytes[j + 1];
       const r = data.bytes[j + 2];
       const ycc = rtoy(matrix([r, g, b]));
-      ys[i / 3] = ycc.get([0]);
-      cbs[i / 3] = ycc.get([1]);
-      crs[i / 3] = ycc.get([2]);
+      const k = i / 3;
+      ys[k] = ycc.get([0]);
+      cbs[k] = ycc.get([1]);
+      crs[k] = ycc.get([2]);
+
+      const x = k % w;
+      const y = Math.floor(k / w);
+      const cx = Math.floor(x / 2);
+      const cy = Math.floor(y / 2);
+
+      if (x % 2 === 0 && y % 2 === 0) {
+        const ci = cy * cw + cx;
+        cbs[ci] = ycc.get([1]);
+        crs[ci] = ycc.get([2]);
+      }
     }
-    sketch.createCanvas(sketch.windowWidth, sketch.windowHeight);
+    sketch.createCanvas(sketch.windowWidth, sketch.windowHeight, sketch.WEBGL);
     sketch.noStroke();
   };
 
@@ -81,13 +99,14 @@ function s(sketch: p5) {
 
     for (let y = 0; y < h; y += d) {
       for (let x = 0; x < w; x += d) {
-        const i = y * w + x;
-        const ycc = matrix([ys[i], cbs[i], crs[i]]);
-        const re = ytor(ycc);
-        sketch.fill(sketch.color(...re.toArray()));
+        const i = (y * w + x) * 3;
+        const j = i + pxOffset;
+        const b = data.bytes[j];
+        const g = data.bytes[j + 1];
+        const r = data.bytes[j + 2];
+        sketch.fill(sketch.color(r, g, b));
         sketch.square(
-          // x * f / d + (width - w * f / d) / 2,
-          x * f + (sketch.width / 2 - w) - 2,
+          x * f + (sketch.width / 2) + 2,
           (sketch.height + (h * f) / d) / 2 - (y * f) / d,
           f,
         );
@@ -97,15 +116,15 @@ function s(sketch: p5) {
     for (let y = 0; y < h; y += d) {
       for (let x = 0; x < w; x += d) {
         const i = y * w + x;
-        const cx = x % 2 === 0 ? x : x - 1;
-        const cy = y % 2 === 0 ? y : y - 1;
-        const ci = cy * w + cx;
+        const cx = Math.floor(x / 2);
+        const cy = Math.floor(y / 2);
+        const ci = cy * cw + cx;
         const ycc = matrix([ys[i], cbs[ci], crs[ci]]);
         const re = ytor(ycc);
         sketch.fill(sketch.color(...re.toArray()));
         sketch.square(
-          // x * f / d + (width - w * f / d) / 1,
-          sketch.width / 2 + x * f + 2,
+          // x * f / d + (width - w * f / d) / 2,
+          x * f + (sketch.width / 2 - w) - 2,
           (sketch.height + (h * f) / d) / 2 - (y * f) / d,
           f,
         );
