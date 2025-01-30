@@ -13,6 +13,16 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+#controls {
+  position: fixed;
+  top: 0;
+  right: 16px;
+}
+
+#controls label[for="dctn"] {
+  display: block;
+}
+
 a {
   font-weight: 500;
   color: #646cff;

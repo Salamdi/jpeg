@@ -7,6 +7,19 @@
     <title>JPEG research</title>
   </head>
   <body>
+    <div id="controls">
+      <label for="dctn"> Coefficients Number </label>
+      <input
+        type="range"
+        name="dctn"
+        value="15"
+        min="1"
+        max="64"
+        step="1"
+        id="dctn"
+      />
+      <p id="dctvalue">Value: 15</p>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
