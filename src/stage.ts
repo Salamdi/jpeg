@@ -107,7 +107,7 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   container.drag().pinch().wheel().decelerate();
 
   // scale
-  const f = 2;
+  const f = 1;
 
   // original image
   const rgbc = new Container();
@@ -322,8 +322,8 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   rbwc.addChild(rbwg);
   container.addChild(rbwc);
 
-  rbwc.x = w * f + 20;
-  rbwc.y = h * f + 20;
+  rbwc.x = 10;
+  rbwc.y = 2 * h * f + 30;
   const renderReconstructed = () => {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
