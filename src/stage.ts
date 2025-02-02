@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { dct2, idct2, rtoy, ytor, zigzagOrder } from './convert';
 import { floor, MathNumericType, Matrix, matrix, zeros, round } from 'mathjs';
 import { Viewport } from 'pixi-viewport';
@@ -20,7 +20,7 @@ export const main = async () => {
   // Append the application canvas to the document body
   appEl.appendChild(app.canvas);
 
-  const data = await fetch('/tiger.bmp')
+  const data = await fetch('/flower.bmp')
     .then((r) => r.arrayBuffer())
     .then((ab) => new Uint8Array(ab));
   const w = getHeaderValue(data, 18, 4);
@@ -103,6 +103,8 @@ export const main = async () => {
       graphics.fill(color);
     }
   }
+  const textStyle = new TextStyle({ fill: 0xffffff });
+  rgbc.addChild(new Text({ text: 'Original', style: textStyle }));
 
   // 4:2:0 subsampled
   const yc = new Container();
@@ -126,6 +128,7 @@ export const main = async () => {
       yg.fill(color);
     }
   }
+  yc.addChild(new Text({ text: 'Subsampled (4:2:0)', style: textStyle }));
 
   /*
   // 2:2:0 subsampled
@@ -246,7 +249,9 @@ export const main = async () => {
   const lumaDctnParahraph = document.getElementById(
     'lumadctvalue',
   ) as HTMLParagraphElement;
-  const chromaDCTInput = document.getElementById('chromadct') as HTMLInputElement;
+  const chromaDCTInput = document.getElementById(
+    'chromadct',
+  ) as HTMLInputElement;
   const chromaParahraph = document.getElementById(
     'chromadctvalue',
   ) as HTMLParagraphElement;
@@ -272,7 +277,8 @@ export const main = async () => {
 
         // here we can adjust number of coefficients to be rendered
         lumaDCTCoefficients[row * lumaBcolsCount + col] = block.map(
-          (x, [i, j]) => (pairToSingle[i * N + j] < lumaCoefficientsNumber ? x : 0),
+          (x, [i, j]) =>
+            pairToSingle[i * N + j] < lumaCoefficientsNumber ? x : 0,
         );
       }
     }
@@ -355,7 +361,6 @@ export const main = async () => {
   };
   reconstructComponents();
 
-  // render luma components
   const rbwc = new Container();
   const rbwg = new Graphics();
   rbwc.addChild(rbwg);
@@ -381,6 +386,8 @@ export const main = async () => {
         rbwg.fill(color);
       }
     }
+
+    rbwc.addChild(new Text({ text: 'Reconstructed after dct', style: textStyle }));
   };
   renderReconstructed();
 
