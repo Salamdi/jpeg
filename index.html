@@ -8,17 +8,32 @@
   </head>
   <body>
     <div id="controls">
-      <label for="dctn"> Coefficients Number </label>
-      <input
-        type="range"
-        name="dctn"
-        value="15"
-        min="1"
-        max="64"
-        step="1"
-        id="dctn"
-      />
-      <p id="dctvalue">Value: 15</p>
+      <div id="luma">
+        <label for="lumadct">Luma Coefficients</label>
+        <input
+          type="range"
+          name="lumadct"
+          value="15"
+          min="1"
+          max="64"
+          step="1"
+          id="lumadct"
+        />
+        <p id="lumadctvalue">Value: 15</p>
+      </div>
+      <div id="chroma">
+        <label for="chromadct">Chroma Coefficients</label>
+        <input
+          type="range"
+          name="chromadct"
+          value="15"
+          min="1"
+          max="64"
+          step="1"
+          id="chromadct"
+        />
+        <p id="chromadctvalue">Value: 15</p>
+      </div>
     </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>

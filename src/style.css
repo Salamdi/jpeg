@@ -17,9 +17,11 @@
   position: fixed;
   top: 0;
   right: 16px;
+  display: flex;
+  gap: 24px;
 }
 
-#controls label[for="dctn"] {
+#controls label {
   display: block;
 }
 

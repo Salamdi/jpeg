@@ -242,13 +242,18 @@ export const main = async () => {
     Array.from<number>({ length: singleToPair.length }),
   );
 
-  const dctnInput = document.getElementById('dctn') as HTMLInputElement;
-  const dctnParahraph = document.getElementById(
-    'dctvalue',
+  const lumaDCTInput = document.getElementById('lumadct') as HTMLInputElement;
+  const lumaDctnParahraph = document.getElementById(
+    'lumadctvalue',
+  ) as HTMLParagraphElement;
+  const chromaDCTInput = document.getElementById('chromadct') as HTMLInputElement;
+  const chromaParahraph = document.getElementById(
+    'chromadctvalue',
   ) as HTMLParagraphElement;
 
   // calculate the dct coefficients
-  let coefficientsNumber = parseInt(dctnInput.value, 10);
+  let lumaCoefficientsNumber = parseInt(lumaDCTInput.value, 10);
+  let chromaCoefficientsNumber = parseInt(chromaDCTInput.value, 10);
   const calculateDCTCoefficients = () => {
     for (let row = 0; row < lumaBrowsCount; row++) {
       for (let col = 0; col < lumaBcolsCount; col++) {
@@ -267,7 +272,7 @@ export const main = async () => {
 
         // here we can adjust number of coefficients to be rendered
         lumaDCTCoefficients[row * lumaBcolsCount + col] = block.map(
-          (x, [i, j]) => (pairToSingle[i * N + j] < coefficientsNumber ? x : 0),
+          (x, [i, j]) => (pairToSingle[i * N + j] < lumaCoefficientsNumber ? x : 0),
         );
       }
     }
@@ -291,11 +296,11 @@ export const main = async () => {
           const cbblock = dct2(cbmx) as Matrix;
           chromaredDCTCoefficients[row * chromaBcolsCount + col] = crblock.map(
             (x, [i, j]) =>
-              pairToSingle[i * N + j] < coefficientsNumber ? x : 0,
+              pairToSingle[i * N + j] < chromaCoefficientsNumber ? x : 0,
           );
           chromablueDCTCoefficients[row * chromaBcolsCount + col] = cbblock.map(
             (x, [i, j]) =>
-              pairToSingle[i * N + j] < coefficientsNumber ? x : 0,
+              pairToSingle[i * N + j] < chromaCoefficientsNumber ? x : 0,
           );
         }
       }
@@ -392,10 +397,18 @@ export const main = async () => {
     get: () => cbs,
   });
 
-  dctnInput?.addEventListener('change', () => {
-    dctnParahraph.textContent =
-      dctnParahraph.textContent?.replace(/\d+/, dctnInput.value) ?? '';
-    coefficientsNumber = parseInt(dctnInput.value);
+  lumaDCTInput?.addEventListener('change', () => {
+    lumaDctnParahraph.textContent =
+      lumaDctnParahraph.textContent?.replace(/\d+/, lumaDCTInput.value) ?? '';
+    lumaCoefficientsNumber = parseInt(lumaDCTInput.value);
+    calculateDCTCoefficients();
+    reconstructComponents();
+    renderReconstructed();
+  });
+  chromaDCTInput?.addEventListener('change', () => {
+    chromaParahraph.textContent =
+      chromaParahraph.textContent?.replace(/\d+/, chromaDCTInput.value) ?? '';
+    chromaCoefficientsNumber = parseInt(chromaDCTInput.value);
     calculateDCTCoefficients();
     reconstructComponents();
     renderReconstructed();
