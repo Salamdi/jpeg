@@ -1,12 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { dct2, idct2, rtoy, ytor, zigzagOrder } from './convert';
-import * as math from 'mathjs';
-import {
-  MathNumericType,
-  Matrix,
-  matrix,
-  zeros,
-} from 'mathjs';
+import { floor, MathNumericType, Matrix, matrix, zeros, round } from 'mathjs';
 import { Viewport } from 'pixi-viewport';
 
 const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
@@ -14,7 +8,7 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
     .slice(offset, offset + size)
     .reduce((value, b, i) => (b << (8 * i)) | value, 0);
 
-(async () => {
+export const main = async () => {
   // Create a new application
   const app = new Application();
 
@@ -26,7 +20,7 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   // Append the application canvas to the document body
   appEl.appendChild(app.canvas);
 
-  const data = await fetch('/flower.bmp')
+  const data = await fetch('/tiger.bmp')
     .then((r) => r.arrayBuffer())
     .then((ab) => new Uint8Array(ab));
   const w = getHeaderValue(data, 18, 4);
@@ -36,9 +30,9 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   const bpp = getHeaderValue(data, 28, 2) / 8;
   const imageSize = getHeaderValue(data, 34, 4);
   const pxOffset = getHeaderValue(data, 10, 4);
-  const pad = imageSize % 3;
+  const pad = imageSize % bpp;
   const wholeSize = imageSize - pad;
-  const len = (wholeSize - pxOffset) / bpp;
+  const len = wholeSize / bpp;
   const slen = cw * ch;
   const ys = new Array<number>(len).fill(0);
   const cbs = new Array<number>(slen).fill(0);
@@ -51,8 +45,8 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
     const g = data[j + 1];
     const r = data[j + 2];
     const ycc = rtoy(matrix([r, g, b]));
-    const k = i / 3;
-    ys[k] = Math.round(ycc.get([0]));
+    const k = i / bpp;
+    ys[k] = round(ycc.get([0]));
 
     const x = k % w;
     const y = Math.floor(k / w);
@@ -61,36 +55,14 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
 
     if (x % 2 === 0 && y % 2 === 0) {
       const ci = cy * cw + cx;
-      cbs[ci] = Math.round(ycc.get([1]));
-      crs[ci] = Math.round(ycc.get([2]));
+      cbs[ci] = round(ycc.get([1]));
+      crs[ci] = round(ycc.get([2]));
     }
   }
 
   appEl.addEventListener('mousewheel', (event: any) => {
     event.stopPropagation();
     event.preventDefault();
-  });
-
-  Object.defineProperty(window, 'math', {
-    get: () => math,
-  });
-  Object.defineProperty(window, 'container', {
-    get: () => container,
-  });
-  Object.defineProperty(window, 'cbs', {
-    get: () => cbs,
-  });
-  Object.defineProperty(window, 'crs', {
-    get: () => crs,
-  });
-  Object.defineProperty(window, 'ys', {
-    get: () => ys,
-  });
-  Object.defineProperty(window, 'dctCoefficients', {
-    get: () => dctCoefficients,
-  });
-  Object.defineProperty(window, 'yCoefficients', {
-    get: () => yCoefficients,
   });
 
   // Create and add a container to the stage
@@ -111,8 +83,8 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
 
   // original image
   const rgbc = new Container();
-  const g = new Graphics();
-  rgbc.addChild(g);
+  const graphics = new Graphics();
+  rgbc.addChild(graphics);
   container.addChild(rgbc);
 
   rgbc.y = 10;
@@ -120,11 +92,15 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 3;
+      const i = (y * w + x) * bpp;
       const j = i + pxOffset;
-      const color = getHeaderValue(data, j, 3);
-      g.rect(x * f, (h - y) * f, f, f);
-      g.fill(color);
+      let colorOffset = 0;
+      const b = getHeaderValue(data, j + colorOffset++, 1);
+      const g = getHeaderValue(data, j + colorOffset++, 1);
+      const r = getHeaderValue(data, j + colorOffset, 1);
+      const color = (r << 16) | (g << 8) | b;
+      graphics.rect(x * f, (h - y) * f, f, f);
+      graphics.fill(color);
     }
   }
 
@@ -139,11 +115,11 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
-      //const cx = Math.floor(x / 2);
-      //const cy = Math.floor(y / 2);
-      //const ci = cy * cw + cx;
-      //const ycc = matrix([ys[i], cbs[ci] ?? 0, crs[ci] ?? 0]);
-      const ycc = matrix([ys[i], 0, 0]);
+      const cx = Math.floor(x / 2);
+      const cy = Math.floor(y / 2);
+      const ci = cy * cw + cx;
+      const ycc = matrix([ys[i], cbs[ci] ?? 0, crs[ci] ?? 0]);
+      //const ycc = matrix([ys[i], 0, 0]);
       const rgb = ytor(ycc);
       const color = (rgb.get([0]) << 16) | (rgb.get([1]) << 8) | rgb.get([2]);
       yg.rect(x * f, (h - y) * f, f, f);
@@ -241,14 +217,20 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   }
   */
 
-  const browsCount = h / N;
-  const bcolsCount = w / N;
+  const lumaBrowsCount = floor(h / N);
+  const lumaBcolsCount = floor(w / N);
 
-  const yCoefficients = Array.from<Matrix<MathNumericType>>({
-    length: browsCount * bcolsCount,
+  const chromaBrowsCount = floor(ch / N);
+  const chromaBcolsCount = floor(cw / N);
+
+  const lumaDCTCoefficients = Array.from<Matrix<MathNumericType>>({
+    length: lumaBrowsCount * lumaBcolsCount,
   });
-  const dctCoefficients = Array.from<Matrix<MathNumericType>>({
-    length: browsCount * bcolsCount,
+  const chromaredDCTCoefficients = Array.from<Matrix<MathNumericType>>({
+    length: chromaBrowsCount * chromaBcolsCount,
+  });
+  const chromablueDCTCoefficients = Array.from<Matrix<MathNumericType>>({
+    length: chromaBrowsCount * chromaBcolsCount,
   });
 
   const singleToPair = zigzagOrder(N);
@@ -268,8 +250,8 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
   // calculate the dct coefficients
   let coefficientsNumber = parseInt(dctnInput.value, 10);
   const calculateDCTCoefficients = () => {
-    for (let row = 0; row < browsCount; row++) {
-      for (let col = 0; col < bcolsCount; col++) {
+    for (let row = 0; row < lumaBrowsCount; row++) {
+      for (let col = 0; col < lumaBcolsCount; col++) {
         const y = row * N;
         const x = col * N;
         const lmx = zeros(N, N) as Matrix<MathNumericType>;
@@ -280,13 +262,42 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
             (lmx as Matrix<MathNumericType>).set([i, j], ys[py * w + px]);
           }
         }
-        yCoefficients[row * bcolsCount + col] = lmx;
+
         const block = dct2(lmx) as Matrix; // dotMultiply(round(dotDivide(dct2(lmx), YQ)), YQ);
 
         // here we can adjust number of coefficients to be rendered
-        dctCoefficients[row * bcolsCount + col] = block.map((x, [i, j]) =>
-          pairToSingle[i * N + j] < coefficientsNumber ? x : 0,
+        lumaDCTCoefficients[row * lumaBcolsCount + col] = block.map(
+          (x, [i, j]) => (pairToSingle[i * N + j] < coefficientsNumber ? x : 0),
         );
+      }
+    }
+
+    for (let row = 0; row < chromaBrowsCount; row++) {
+      for (let col = 0; col < chromaBcolsCount; col++) {
+        const y = row * N;
+        const x = col * N;
+
+        // chroma components
+        const crmx = zeros(N, N) as Matrix<number>;
+        const cbmx = zeros(N, N) as Matrix<number>;
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < N; j++) {
+            const py = y + i;
+            const px = x + j;
+            (crmx as Matrix<MathNumericType>).set([i, j], crs[py * cw + px]);
+            (cbmx as Matrix<MathNumericType>).set([i, j], cbs[py * cw + px]);
+          }
+          const crblock = dct2(crmx) as Matrix;
+          const cbblock = dct2(cbmx) as Matrix;
+          chromaredDCTCoefficients[row * chromaBcolsCount + col] = crblock.map(
+            (x, [i, j]) =>
+              pairToSingle[i * N + j] < coefficientsNumber ? x : 0,
+          );
+          chromablueDCTCoefficients[row * chromaBcolsCount + col] = cbblock.map(
+            (x, [i, j]) =>
+              pairToSingle[i * N + j] < coefficientsNumber ? x : 0,
+          );
+        }
       }
     }
   };
@@ -294,14 +305,16 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
 
   // reconstruct luma components
   const reconstructedLumaComponents = ys.slice();
+  const reconstructedChromaredComponents = crs.slice();
+  const reconstructedChromablueComponents = cbs.slice();
 
-  const regenerateLumaComponents = () => {
-    for (let row = 0; row < browsCount; row++) {
-      for (let col = 0; col < bcolsCount; col++) {
+  const reconstructComponents = () => {
+    for (let row = 0; row < lumaBrowsCount; row++) {
+      for (let col = 0; col < lumaBcolsCount; col++) {
         const cornerPixelX = col * N;
         const cornerPixelY = row * N;
         const block = idct2(
-          dctCoefficients[row * bcolsCount + col],
+          lumaDCTCoefficients[row * lumaBcolsCount + col],
         ) as Matrix<number>;
         for (let i = 0; i < N; i++) {
           for (let j = 0; j < N; j++) {
@@ -313,8 +326,29 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
         }
       }
     }
+    for (let row = 0; row < chromaBrowsCount; row++) {
+      for (let col = 0; col < chromaBcolsCount; col++) {
+        const cornerPixelX = col * N;
+        const cornerPixelY = row * N;
+        const rblock = idct2(
+          chromaredDCTCoefficients[row * chromaBcolsCount + col],
+        ) as Matrix<number>;
+        const bblock = idct2(
+          chromablueDCTCoefficients[row * chromaBcolsCount + col],
+        ) as Matrix<number>;
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < N; j++) {
+            const pixelY = cornerPixelY + i;
+            const pixelX = cornerPixelX + j;
+            const pixelIndex = pixelY * cw + pixelX;
+            reconstructedChromaredComponents[pixelIndex] = rblock.get([i, j]);
+            reconstructedChromablueComponents[pixelIndex] = bblock.get([i, j]);
+          }
+        }
+      }
+    }
   };
-  regenerateLumaComponents();
+  reconstructComponents();
 
   // render luma components
   const rbwc = new Container();
@@ -328,23 +362,43 @@ const getHeaderValue = (data: Uint8Array, offset: number, size: number) =>
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = y * w + x;
-        const ycc = matrix([reconstructedLumaComponents[i], 0, 0]);
+        const cx = Math.floor(x / 2);
+        const cy = Math.floor(y / 2);
+        const ci = cy * cw + cx;
+        const ycc = matrix([
+          reconstructedLumaComponents[i],
+          reconstructedChromablueComponents[ci],
+          reconstructedChromaredComponents[ci],
+        ]);
         const rgb = ytor(ycc);
         const color = (rgb.get([0]) << 16) | (rgb.get([1]) << 8) | rgb.get([2]);
         rbwg.rect(x * f, (h - y) * f, f, f);
-        //rbwg.stroke(color);
         rbwg.fill(color);
       }
     }
   };
   renderReconstructed();
 
+  Object.defineProperty(self, 'reconstructedChromaredComponents', {
+    get: () => reconstructedChromaredComponents,
+  });
+  Object.defineProperty(self, 'crs', {
+    get: () => crs,
+  });
+  Object.defineProperty(self, 'reconstructedChromablueComponents', {
+    get: () => reconstructedChromablueComponents,
+  });
+  Object.defineProperty(self, 'cbs', {
+    get: () => cbs,
+  });
+
   dctnInput?.addEventListener('change', () => {
     dctnParahraph.textContent =
       dctnParahraph.textContent?.replace(/\d+/, dctnInput.value) ?? '';
     coefficientsNumber = parseInt(dctnInput.value);
     calculateDCTCoefficients();
-    regenerateLumaComponents();
+    reconstructComponents();
     renderReconstructed();
   });
-})();
+};
+main();
